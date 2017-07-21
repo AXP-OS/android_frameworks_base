@@ -1024,6 +1024,10 @@ public class PermissionManagerService {
         }
     }
 
+    public static boolean isSpecialRuntimePermission(final String permission) {
+        return false;
+    }
+
     /**
      * Restore the permission state for a package.
      *
@@ -1323,6 +1327,14 @@ public class PermissionManagerService {
                                             }
                                         }
                                     }
+
+                                    if (isSpecialRuntimePermission(bp.name) &&
+                                            origPermissions.getRuntimePermissionState(bp.name, userId) == null) {
+                                        if (permissionsState.grantRuntimePermission(bp, userId)
+                                                != PERMISSION_OPERATION_FAILURE) {
+                                            wasChanged = true;
+                                        }
+                                    }
                                 } else {
                                     if (permState == null) {
                                         // New permission
@@ -1456,7 +1468,7 @@ public class PermissionManagerService {
                                              wasChanged = true;
                                         }
                                     }
-                                } else {
+				} else {
                                     if (!permissionsState.hasRuntimePermission(bp.name, userId)
                                             && permissionsState.grantRuntimePermission(bp,
                                                     userId) != PERMISSION_OPERATION_FAILURE) {
@@ -2234,7 +2246,7 @@ public class PermissionManagerService {
                     && (grantedPermissions == null
                            || ArrayUtils.contains(grantedPermissions, permission))) {
                 final int flags = permissionsState.getPermissionFlags(permission, userId);
-                if (supportsRuntimePermissions) {
+                if (supportsRuntimePermissions || isSpecialRuntimePermission(bp.name)) {
                     // Installer cannot change immutable permissions.
                     if ((flags & immutableFlags) == 0) {
                         grantRuntimePermission(permission, pkg.packageName, false, callingUid,
@@ -2293,7 +2305,7 @@ public class PermissionManagerService {
         // to keep the review required permission flag per user while an
         // install permission's state is shared across all users.
         if (pkg.applicationInfo.targetSdkVersion < Build.VERSION_CODES.M
-                && bp.isRuntime()) {
+                && bp.isRuntime() && !isSpecialRuntimePermission(bp.name)) {
             return;
         }
 
@@ -2345,7 +2357,8 @@ public class PermissionManagerService {
                     + permName + " for package " + packageName);
         }
 
-        if (pkg.applicationInfo.targetSdkVersion < Build.VERSION_CODES.M) {
+        if (pkg.applicationInfo.targetSdkVersion < Build.VERSION_CODES.M
+                && !isSpecialRuntimePermission(permName)) {
             Slog.w(TAG, "Cannot grant runtime permission to a legacy app");
             return;
         }
@@ -2432,7 +2445,7 @@ public class PermissionManagerService {
         // to keep the review required permission flag per user while an
         // install permission's state is shared across all users.
         if (pkg.applicationInfo.targetSdkVersion < Build.VERSION_CODES.M
-                && bp.isRuntime()) {
+                && bp.isRuntime() && !isSpecialRuntimePermission(permName)) {
             return;
         }
 
