@@ -15122,6 +15122,12 @@ public final class Settings {
                 "power_button_suppression_delay_after_gesture_wake";
 
         /**
+         * The amount of time in milliseconds before bluetooth is turned off
+         * @hide
+         */
+        public static final String BLUETOOTH_OFF_TIMEOUT = "bluetooth_off_timeout";
+
+        /**
          * Whether to automatically reboot the device after a user defined timeout
          *
          * @hide
