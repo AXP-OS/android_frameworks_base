@@ -82,6 +82,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.net.DataUsageRequest;
 import android.net.INetworkManagementEventObserver;
 import android.net.INetworkStatsService;
@@ -97,8 +98,10 @@ import android.net.NetworkStats.NonMonotonicObserver;
 import android.net.NetworkStatsHistory;
 import android.net.NetworkTemplate;
 import android.net.TrafficStats;
+import android.net.wifi.WifiManager;
 import android.os.BestClock;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.DropBoxManager;
 import android.os.Environment;
 import android.os.Handler;
@@ -366,6 +369,73 @@ public class NetworkStatsService extends INetworkStatsService.Stub {
         mSystemDir = checkNotNull(systemDir, "missing systemDir");
         mBaseDir = checkNotNull(baseDir, "missing baseDir");
         mUseBpfTrafficStats = new File("/sys/fs/bpf/map_netd_app_uid_stats_map").exists();
+
+        IntentFilter wifiFilter = new IntentFilter();
+        wifiFilter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
+        wifiFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
+
+        context.registerReceiver(
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        if (WifiManager.NETWORK_STATE_CHANGED_ACTION.equals(intent.getAction())) {
+                            Bundle bundle = intent.getExtras();
+                            NetworkInfo networkInfo = bundle.getParcelable(WifiManager.EXTRA_NETWORK_INFO);
+                            isWifiConnected = networkInfo != null && networkInfo.isConnected();
+                        }
+                        reconfigureWiFiTimeoutListener();
+                    }
+                }, wifiFilter
+        );
+
+        context.getContentResolver().registerContentObserver(
+                Global.getUriFor(Global.WIFI_OFF_TIMEOUT),
+                false,
+                new ContentObserver(new Handler(context.getMainLooper())) {
+                    @Override
+                    public void onChange(boolean selfChange) {
+                        super.onChange(selfChange);
+                        reconfigureWiFiTimeoutListener();
+                    }
+                });
+    }
+
+    private static boolean isWifiConnected = false;
+    private final AlarmManager.OnAlarmListener listener = this::turnOffWifi;
+
+    private void turnOffWifi() {
+        WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+        if (isWifiTimeoutEnabled(mContext) && wifiManager.isWifiEnabled()) {
+            // setWifiEnabled(enabled) is deprecated, though AOSP still uses
+            // it internally and system apps/services are exempted
+            wifiManager.setWifiEnabled(false);
+        }
+    }
+
+    private void reconfigureWiFiTimeoutListener() {
+        if (isWifiTimeoutEnabled(mContext) && !isWifiConnected) {
+            final long timeout = SystemClock.elapsedRealtime() + wifiTimeoutDurationInMilli(mContext);
+            mAlarmManager.cancel(listener);
+            mAlarmManager.setExact(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    timeout,
+                    "Wi-Fi Idle Timeout",
+                    listener,
+                    new Handler(mContext.getMainLooper())
+            );
+        } else {
+            mAlarmManager.cancel(listener);
+        }
+    }
+
+    private static long wifiTimeoutDurationInMilli(Context mContext) {
+        return Settings.Global.getLong(mContext.getContentResolver(),
+                Global.WIFI_OFF_TIMEOUT, 0);
+    }
+
+    /** Zero is default and means disabled */
+    private static boolean isWifiTimeoutEnabled(Context mContext) {
+        return 0 != wifiTimeoutDurationInMilli(mContext);
     }
 
     private void registerLocalService() {
