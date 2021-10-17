@@ -206,6 +206,8 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
 
     private final static String TAG = "KeyguardViewMediator";
 
+    private static final String DELAYED_REBOOT_ACTION =
+        "com.android.internal.policy.impl.PhoneWindowManager.DELAYED_REBOOT";
     private static final String DELAYED_KEYGUARD_ACTION =
         "com.android.internal.policy.impl.PhoneWindowManager.DELAYED_KEYGUARD";
     private static final String DELAYED_LOCK_PROFILE_ACTION =
@@ -354,6 +356,11 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
      * Similar to {@link #mDelayedProfileShowingSequence}, but it is for profile case.
      */
     private int mDelayedProfileShowingSequence;
+
+    /**
+     * Same as {@link #mDelayedProfileShowingSequence}, but used for our reboot implementation
+     */
+    private int mDelayedRebootSequence;
 
     private final DismissCallbackRegistry mDismissCallbackRegistry;
 
@@ -1286,6 +1293,7 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
         final IntentFilter delayedActionFilter = new IntentFilter();
         delayedActionFilter.addAction(DELAYED_KEYGUARD_ACTION);
         delayedActionFilter.addAction(DELAYED_LOCK_PROFILE_ACTION);
+        delayedActionFilter.addAction(DELAYED_REBOOT_ACTION);
         delayedActionFilter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
         mContext.registerReceiver(mDelayedLockBroadcastReceiver, delayedActionFilter,
                 SYSTEMUI_PERMISSION, null /* scheduler */,
@@ -1621,6 +1629,18 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
         }
     }
 
+    private void doRebootForOwnerAfterTimeoutIfEnabled(long rebootAfterTimeout) {
+        long when = SystemClock.elapsedRealtime() + rebootAfterTimeout;
+        Intent rebootIntent = new Intent(DELAYED_REBOOT_ACTION);
+        rebootIntent.putExtra("seq", mDelayedRebootSequence);
+        rebootIntent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND);
+        PendingIntent sender = PendingIntent.getBroadcast(mContext,
+                0, rebootIntent, PendingIntent.FLAG_CANCEL_CURRENT |  PendingIntent.FLAG_IMMUTABLE);
+        mAlarmManager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, when, sender);
+        if (DEBUG) Log.d(TAG, "setting alarm to reboot device, timeout = "
+                         + String.valueOf(rebootAfterTimeout));
+    }
+
     private void doKeyguardForChildProfilesLocked() {
         UserManager um = UserManager.get(mContext);
         for (int profileId : um.getEnabledProfileIds(UserHandle.myUserId())) {
@@ -1636,6 +1656,10 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
 
     private void cancelDoKeyguardForChildProfilesLocked() {
         mDelayedProfileShowingSequence++;
+    }
+
+    private void cancelDoRebootForOwnerAfterTimeoutIfEnabled() {
+        mDelayedRebootSequence++;
     }
 
     /**
@@ -1994,6 +2018,10 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
 
         if (DEBUG) Log.d(TAG, "doKeyguard: showing the lock screen");
         showLocked(options);
+        final long rebootAfterTimeout = Settings.Global.getLong(mContext.getContentResolver(), Settings.Global.SETTINGS_REBOOT_AFTER_TIMEOUT, 0);
+        if (rebootAfterTimeout >= 1) {
+            doRebootForOwnerAfterTimeoutIfEnabled(rebootAfterTimeout);
+        }
     }
 
     private void lockProfile(int userId) {
@@ -2177,6 +2205,12 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
                             lockProfile(userId);
                         }
                     }
+                }
+            } else if (DELAYED_REBOOT_ACTION.equals(intent.getAction())) {
+                final int sequence = intent.getIntExtra("seq", 0);
+                if (sequence == mDelayedRebootSequence) {
+                    PowerManager pm = mContext.getSystemService(PowerManager.class);
+                    pm.reboot(null);
                 }
             }
         }
@@ -2781,6 +2815,7 @@ public class KeyguardViewMediator implements CoreStartable, Dumpable,
         mHideAnimationRun = false;
         adjustStatusBarLocked();
         sendUserPresentBroadcast();
+        cancelDoRebootForOwnerAfterTimeoutIfEnabled();
     }
 
     private Configuration.Builder createInteractionJankMonitorConf(int cuj) {
