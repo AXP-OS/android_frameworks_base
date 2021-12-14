@@ -17,6 +17,7 @@ package android.net;
 
 import static android.net.IpSecManager.INVALID_RESOURCE_ID;
 
+import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.IntDef;
 import android.annotation.NonNull;
@@ -31,6 +32,7 @@ import android.annotation.UnsupportedAppUsage;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.IpSecManager.UdpEncapsulationSocket;
 import android.net.SocketKeepalive.Callback;
 import android.os.Binder;
@@ -3054,6 +3056,12 @@ public class ConnectivityManager {
      */
     public void reportNetworkConnectivity(@Nullable Network network, boolean hasConnectivity) {
         printStackTrace();
+        if (mContext.checkSelfPermission(Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
+            // ConnectivityService enforces this by throwing an unexpected SecurityException,
+            // which puts GMS into a crash loop. Also useful for other apps that don't expect that
+            // INTERNET permission might get revoked.
+            return;
+        }
         try {
             mService.reportNetworkConnectivity(network, hasConnectivity);
         } catch (RemoteException e) {
