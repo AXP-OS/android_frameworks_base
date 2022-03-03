@@ -1651,13 +1651,7 @@ public class NetworkManagementService extends INetworkManagementService.Stub {
         } catch (RemoteException e) {
             throw new IllegalStateException(e);
         } catch (ServiceSpecificException e) {
-            // ENETDOWN is returned when the interface cannot be resolved to an index.
-            // (and is only returned by bandwidthAdd... call)
-            if (e.errorCode == ENETDOWN) {
                 ok = false;
-            } else {
-                throw new IllegalStateException(e);
-            }
         }
         return ok;
     }
