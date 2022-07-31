@@ -2223,7 +2223,7 @@ public final class SystemServer implements Dumpable {
                 Slog.e(TAG, "Failure starting HardwarePropertiesManagerService", e);
             }
             t.traceEnd();
-          
+
             if (!isWatch) {
                 t.traceBegin("StartTwilightService");
                 mSystemServiceManager.startService(TwilightService.class);
@@ -3062,6 +3062,8 @@ public final class SystemServer implements Dumpable {
                 reportWtf("Triggering OdsignStatsLogger", e);
             }
             t.traceEnd();
+
+            com.android.server.ext.SystemServerExt.init(mSystemContext, mPackageManagerService);
         }, t);
 
         t.traceBegin("StartSystemUI");
