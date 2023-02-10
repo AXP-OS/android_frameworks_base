@@ -15139,6 +15139,15 @@ public final class Settings {
          * @hide
          */
         public static final String SETTINGS_REBOOT_AFTER_TIMEOUT = "settings_reboot_after_timeout";
+
+        /**
+         * Force disable Secure User Plane Location (SUPL), 0 or 1.
+         * @hide
+         */
+        public static final String FORCE_DISABLE_SUPL = "force_disable_supl";
+
+        /** @hide */
+        public static final int FORCE_DISABLE_SUPL_DEFAULT = 0;
     }
 
     /**
