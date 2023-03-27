@@ -6,6 +6,7 @@ import android.annotation.UserIdInt;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManagerInternal;
 import android.os.Build;
+import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.util.ArraySet;
 
@@ -16,10 +17,29 @@ import com.android.server.pm.pkg.parsing.ParsingPackage;
 
 public class PackageManagerHooks {
 
+    public static final String OPENEUICC_PKG_NAME = "im.angry.openeuicc";
+    public static final String OPENEUICC_TOGGLE = "persist.security.openeuicc";
+    public static final String EUICC_SUPPORT_PIXEL_PKG_NAME = "com.google.euiccpixel";
+
     // Called when package enabled setting is deserialized from storage
     @Nullable
     public static Integer maybeOverridePackageEnabledSetting(String pkgName, @UserIdInt int userId) {
         switch (pkgName) {
+            case OPENEUICC_PKG_NAME:
+                if (userId == UserHandle.USER_SYSTEM && SystemProperties.getBoolean(OPENEUICC_TOGGLE, false)) {
+                    return PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
+                } else {
+                    return PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+                }
+            case EUICC_SUPPORT_PIXEL_PKG_NAME:
+                if (userId == UserHandle.USER_SYSTEM) {
+                    // EuiccSupportPixel handles firmware updates and should always be enabled.
+                    // It was previously unconditionally disabled after reboot.
+                    return PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
+                } else {
+                    // one of the previous OS versions enabled EuiccSupportPixel in all users
+                    return PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+                }
             default:
                 return null;
         }
@@ -30,6 +50,16 @@ public class PackageManagerHooks {
         String pkgName = pkg.getPackageName();
 
         switch (pkgName) {
+            case EUICC_SUPPORT_PIXEL_PKG_NAME:
+                // EuiccSupportPixel uses INTERNET perm only as part of its dev mode
+                removeUsesPermissions(pkg, Manifest.permission.INTERNET);
+                return;
+            case OPENEUICC_PKG_NAME:
+                // this is the same as android:enabled="false" in <application> AndroidManifest tag,
+                // it makes the package disabled by default on first boot, when there's no
+                // serialized package state
+                pkg.setEnabled(SystemProperties.getBoolean(OPENEUICC_TOGGLE, false));
+                return;
             default:
                 return;
         }
@@ -86,5 +116,6 @@ public class PackageManagerHooks {
 
     // Packages in this array are restricted from interacting with and being interacted by non-system apps
     private static final ArraySet<String> restrictedVisibilityPackages = new ArraySet<>(new String[] {
+        EUICC_SUPPORT_PIXEL_PKG_NAME,
     });
 }
