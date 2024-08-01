@@ -298,6 +298,7 @@ public class Camera {
          */
         String packageList = SystemProperties.get("vendor.camera.aux.packagelist", "");
         String packageBlacklist = SystemProperties.get("vendor.camera.aux.packageblacklist", "");
+        if(packageList != null && packageList.length() > 0) { packageList += ","; } packageList += "net.sourceforge.opencamera";
         if (!packageList.isEmpty()) {
             exposeAuxCamera = false;
             if (Arrays.asList(packageList.split(",")).contains(packageName)) {

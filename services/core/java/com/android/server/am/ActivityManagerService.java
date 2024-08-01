@@ -15535,7 +15535,7 @@ public class ActivityManagerService extends IActivityManager.Stub
             } catch (RemoteException e) {
             }
 
-            if (!Build.isBuildConsistent()) {
+            if (false) {
                 Slog.e(TAG, "Build fingerprint is not consistent, warning user");
                 mUiHandler.obtainMessage(SHOW_FINGERPRINT_ERROR_UI_MSG).sendToTarget();
             }
