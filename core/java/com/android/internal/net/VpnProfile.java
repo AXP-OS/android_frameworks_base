@@ -494,7 +494,7 @@ public final class VpnProfile implements Cloneable, Parcelable {
         return type != TYPE_PPTP;
     }
 
-    /** Returns {@code true} if the server address is numeric, e.g. 8.8.8.8 */
+    /** Returns {@code true} if the server address is numeric, e.g. 9.9.9.9 */
     public boolean isServerAddressNumeric() {
         try {
             InetAddress.parseNumericAddress(server);
@@ -509,7 +509,7 @@ public final class VpnProfile implements Cloneable, Parcelable {
         return !TextUtils.isEmpty(dnsServers);
     }
 
-    /** Returns {@code true} if all DNS servers have numeric addresses, e.g. 8.8.8.8 */
+    /** Returns {@code true} if all DNS servers have numeric addresses, e.g. 9.9.9.9 */
     public boolean areDnsAddressesNumeric() {
         try {
             for (String dnsServer : dnsServers.split(" +")) {
