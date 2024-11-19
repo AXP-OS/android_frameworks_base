@@ -5251,6 +5251,16 @@ public final class Settings {
      * or by calling the "put" methods that this class contains.
      */
     public static final class Secure extends NameValueTable {
+
+        /**
+         * extendrom: unrestricted call recording
+         *
+         * <p>1 = permit any country to record
+         * <p>0 = allow only defined countries to record
+         * @hide
+         */
+        public static final String ER_ALLOW_ANY_CALL_REC = "extendrom_call_recording";
+
         // NOTE: If you add new settings here, be sure to add them to
         // com.android.providers.settings.SettingsProtoDumpUtil#dumpProtoSecureSettingsLocked.
 
@@ -6328,6 +6338,15 @@ public final class Settings {
          * @see PackageManager#canRequestPackageInstalls()
          */
         public static final String INSTALL_NON_MARKET_APPS = "install_non_market_apps";
+
+        /**
+         * extendrom: whether applications can fake a signature.
+         *
+         * <p>1 = permit apps to fake signature
+         * <p>0 = disable this feature
+         * @hide
+         */
+        public static final String ALLOW_SIGNATURE_FAKE = "allow_signature_fake";
 
         /**
          * A flag to tell {@link com.android.server.devicepolicy.DevicePolicyManagerService} that
