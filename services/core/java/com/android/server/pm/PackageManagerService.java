@@ -4465,8 +4465,9 @@ public class PackageManagerService extends IPackageManager.Stub
                 });
             }
 
-            PackageInfo packageInfo = PackageInfoUtils.generate(p, gids, flags,
-                    ps.firstInstallTime, ps.lastUpdateTime, permissions, state, userId, ps);
+            PackageInfo packageInfo = mayFakeSignature(p, PackageInfoUtils.generate(p, gids, flags,
+                    ps.firstInstallTime, ps.lastUpdateTime, permissions, state, userId, ps),
+                    permissions);
 
             if (packageInfo == null) {
                 return null;
@@ -4500,6 +4501,40 @@ public class PackageManagerService extends IPackageManager.Stub
         } else {
             return null;
         }
+    }
+
+    private PackageInfo mayFakeSignature(AndroidPackage p, PackageInfo pi,
+            Set<String> permissions) {
+        try {
+            if (permissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")
+                    && p.getTargetSdkVersion() > Build.VERSION_CODES.LOLLIPOP_MR1
+                    && p.getMetaData() != null) {
+                // extendrom: stop here when not enabled in developer settings
+                if (android.provider.Settings.Secure.getInt(mContext.getContentResolver(),
+                    android.provider.Settings.Secure.ALLOW_SIGNATURE_FAKE, 0) == 0)
+                    return pi;
+                String sig = p.getMetaData().getString("fake-signature");
+                if (sig != null) {
+                    pi.signatures = new Signature[] {new Signature(sig)};
+                    try {
+                        pi.signingInfo = new SigningInfo(
+                            new SigningDetails(
+                                    pi.signatures,
+                                    SigningDetails.SignatureSchemeVersion.SIGNING_BLOCK_V3,
+                                    PackageParser.toSigningKeys(pi.signatures),
+                                    null
+                            )
+                        );
+                    } catch (CertificateException e) {
+                        Slog.e(TAG, "Caught an exception when creating signing keys: ", e);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            // We should never die because of any failures, this is system code!
+            Log.w("PackageManagerService.FAKE_PACKAGE_SIGNATURE", t);
+        }
+        return pi;
     }
 
     @Override
@@ -21571,6 +21606,57 @@ public class PackageManagerService extends IPackageManager.Stub
                 UserHandle.getUserId(callingUid))) {
             return null;
         }
+
+        /**
+            extendrom intercept installation source
+            - com.machiav3lli.backup: Neo Backup
+            - F-Droid on e.g A11 results in: com.android.packageinstaller
+            - null: usually a system app
+            callingUid != Process.SYSTEM_UID: show App info correctly, allows origin App Store update
+        **/
+        boolean systemApp = ps.pkg.isSystem();
+        if (!systemApp) {
+            String PACKAGE_PLAY_STORE = "com.android.vending";
+            String[] PACKAGES_SPOOF_INSTALLSOURCE =
+                new String[] {  "com.aurora.store",
+                                "dev.imranr.obtainium",
+                                "com.machiav3lli.backup"
+                             };
+            try {
+                String interceptInstSrc = android.os.SystemProperties.get(
+                    "persist.vendor.er.orrinstallsrc", "disabled");
+                InstallSource installSource = ps.installSource;
+
+                if (callingUid != Process.SYSTEM_UID
+                        && "enabled".equals(interceptInstSrc)
+                        && installSource.installerPackageName != null
+                        && mSettings.getPackageLPr(PACKAGE_PLAY_STORE) != null
+                        && (Arrays.asList(PACKAGES_SPOOF_INSTALLSOURCE).contains(installSource.installerPackageName)
+                            || Arrays.asList(PACKAGES_SPOOF_INSTALLSOURCE).contains(installSource.initiatingPackageName))) {
+                    Log.w(TAG, "EXTENDROM: cond4: INTERCEPTING !!! installer/initiator: " + installSource.installerPackageName + "/" + installSource.initiatingPackageName + ", pkg: " + packageName + ", UID: " + callingUid + ", systemApp: " + systemApp);
+
+                    // see: services/core/java/com/android/server/pm/InstallSource.java
+                    ps.installSource = InstallSource.create(
+                        PACKAGE_PLAY_STORE,                   /* initiatingPackageName */
+                        installSource.initiatingPackageName,  /* originatingPackageName */
+                        PACKAGE_PLAY_STORE,                   /* installerPackageName */
+                        installSource.isOrphaned,
+                        false)
+                        .setInitiatingPackageSignatures(new PackageSignatures(
+                          mSettings.mPackages.get(PACKAGE_PLAY_STORE).getSigningDetails()));
+                    ps.setInstallerPackageName(PACKAGE_PLAY_STORE);
+                } else {
+                    Log.d(TAG, "EXTENDROM: cond4: NOT intercepting initiator/installer: " + installSource.initiatingPackageName + "/" + installSource.installerPackageName + ", pkg: " + packageName + ", UID: " + callingUid + ", systemApp: " + systemApp + ", originator: " + installSource.originatingPackageName);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "EXTENDROM: Error occured: " + e.getMessage());
+            }
+            //Log.d(TAG, "EXTENDROM: cond1: installer/initiator: " + ps.installSource.installerPackageName + "/" + ps.installSource.initiatingPackageName + ", pkg: " + packageName + ", UID: " + callingUid + ", systemApp: " + systemApp);
+        //} else {
+        //    Log.d(TAG, "EXTENDROM: cond0: installer/initiator: " + ps.installSource.installerPackageName + "/" + ps.installSource.initiatingPackageName + ", pkg: " + packageName + ", UID: " + callingUid + ", systemApp: " + systemApp);
+        }
+        // end: extendrom intercept installation source
+        //Log.w(TAG, "EXTENDROM: after TRY: pkg=" + packageName);
 
         return ps.installSource;
     }
