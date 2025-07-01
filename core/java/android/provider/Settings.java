@@ -5991,6 +5991,16 @@ public final class Settings {
      * or by calling the "put" methods that this class contains.
      */
     public static final class Secure extends NameValueTable {
+
+        /**
+         * extendrom: unrestricted call recording
+         *
+         * <p>1 = permit any country to record
+         * <p>0 = allow only defined countries to record
+         * @hide
+         */
+        public static final String ER_ALLOW_ANY_CALL_REC = "extendrom_call_recording";
+
         // NOTE: If you add new settings here, be sure to add them to
         // com.android.providers.settings.SettingsProtoDumpUtil#dumpProtoSecureSettingsLocked.
 
