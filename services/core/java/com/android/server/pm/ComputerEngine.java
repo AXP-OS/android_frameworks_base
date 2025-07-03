@@ -1615,6 +1615,10 @@ public class ComputerEngine implements Computer {
         try {
             if (p.getMetaData() != null &&
                     p.getTargetSdkVersion() > Build.VERSION_CODES.LOLLIPOP_MR1) {
+		// extendrom: stop here when not enabled in developer settings
+                if (android.provider.Settings.Secure.getInt(mContext.getContentResolver(),
+                    android.provider.Settings.Secure.ALLOW_SIGNATURE_FAKE, 0) == 0)
+                    return pi;
                 String sig = p.getMetaData().getString("fake-signature");
                 if (sig != null &&
                     permissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")) {
