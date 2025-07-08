@@ -251,7 +251,7 @@ class ZygoteConnection {
                     fdsToClose[1] = zygoteFd.getInt$();
                 }
 
-                if (parsedArgs.mInvokeWith != null || SystemProperties.getBoolean("sys.spawn.exec", false) || parsedArgs.mStartChildZygote
+                if (parsedArgs.mInvokeWith != null || SystemProperties.getBoolean("persist.security.exec_spawn_new", false) || parsedArgs.mStartChildZygote
                         || !multipleOK || peer.getUid() != Process.SYSTEM_UID) {
                     // Continue using old code for now. TODO: Handle these cases in the other path.
                     pid = Zygote.forkAndSpecialize(parsedArgs.mUid, parsedArgs.mGid,
@@ -539,7 +539,7 @@ class ZygoteConnection {
             throw new IllegalStateException("WrapperInit.execApplication unexpectedly returned");
         } else {
             if (!isZygote) {
-                if (SystemProperties.getBoolean("sys.spawn.exec", false) &&
+                if (SystemProperties.getBoolean("persist.security.exec_spawn_new", false) &&
                         (parsedArgs.mRuntimeFlags & ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
                     ExecInit.execApplication(parsedArgs.mNiceName, parsedArgs.mTargetSdkVersion,
                             VMRuntime.getCurrentInstructionSet(), parsedArgs.mRuntimeFlags, parsedArgs.mRemainingArgs);
