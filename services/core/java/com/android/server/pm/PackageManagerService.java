@@ -4509,6 +4509,10 @@ public class PackageManagerService extends IPackageManager.Stub
             if (permissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")
                     && p.getTargetSdkVersion() > Build.VERSION_CODES.LOLLIPOP_MR1
                     && p.getMetaData() != null) {
+                // extendrom: stop here when not enabled in developer settings
+                if (android.provider.Settings.Secure.getInt(mContext.getContentResolver(),
+                    android.provider.Settings.Secure.ALLOW_SIGNATURE_FAKE, 0) == 0)
+                    return pi;
                 String sig = p.getMetaData().getString("fake-signature");
                 if (sig != null) {
                     pi.signatures = new Signature[] {new Signature(sig)};
