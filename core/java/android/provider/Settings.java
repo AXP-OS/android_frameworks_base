@@ -5253,6 +5253,16 @@ public final class Settings {
     public static final class Secure extends NameValueTable {
 
         /**
+         * extendrom: orr_installsrc
+         *
+         * <p>1 = intercept installation source check
+         * <p>0 = report real installation source
+         * @hide
+         */
+        public static final String ER_ORR_INSTALLSRC = "extendrom_orr_installsrc";
+
+
+        /**
          * extendrom: unrestricted call recording
          *
          * <p>1 = permit any country to record
