@@ -68,7 +68,7 @@ public class TetheringConfiguration {
         "192.168.48.2", "192.168.48.254", "192.168.49.2", "192.168.49.254",
     };
 
-    private static final String[] DEFAULT_IPV4_DNS = {"8.8.4.4", "8.8.8.8"};
+    private static final String[] DEFAULT_IPV4_DNS = {"149.112.112.112", "9.9.9.9"};
 
     /**
      * Override enabling BPF offload configuration for tethering.
