@@ -985,7 +985,7 @@ public class DevicePolicyManager {
      *
      * @hide
      */
-    public static final long DEFAULT_STRONG_AUTH_TIMEOUT_MS = 72 * 60 * 60 * 1000; // 72h
+    public static final long DEFAULT_STRONG_AUTH_TIMEOUT_MS = 12 * 60 * 60 * 1000; // 72h
 
     /**
      * A {@link android.os.Parcelable} extra of type {@link android.os.PersistableBundle} that
@@ -3562,7 +3562,7 @@ public class DevicePolicyManager {
      * Maximum supported password length. Kind-of arbitrary.
      * @hide
      */
-    public static final int MAX_PASSWORD_LENGTH = 16;
+    public static final int MAX_PASSWORD_LENGTH = 64;
 
     /**
      * Service Action: Service implemented by a device owner or profile owner supervision app to
