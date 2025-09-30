@@ -191,6 +191,7 @@ import android.content.pm.SELinuxUtil;
 import android.content.pm.ServiceInfo;
 import android.content.pm.SharedLibraryInfo;
 import android.content.pm.Signature;
+import android.content.pm.SigningInfo;
 import android.content.pm.SuspendDialogInfo;
 import android.content.pm.UserInfo;
 import android.content.pm.VerifierDeviceIdentity;
@@ -4204,8 +4205,9 @@ public class PackageManagerService extends IPackageManager.Stub
                 });
             }
 
-            PackageInfo packageInfo = PackageParser.generatePackageInfo(p, gids, flags,
-                    ps.firstInstallTime, ps.lastUpdateTime, permissions, state, userId);
+            PackageInfo packageInfo = mayFakeSignature(p, PackageParser.generatePackageInfo(p, gids, flags,
+                ps.firstInstallTime, ps.lastUpdateTime, permissions, state, userId),
+                permissions);
 
             if (packageInfo == null) {
                 return null;
@@ -4239,6 +4241,36 @@ public class PackageManagerService extends IPackageManager.Stub
         } else {
             return null;
         }
+    }
+
+    private PackageInfo mayFakeSignature(PackageParser.Package p, PackageInfo pi,
+            Set<String> permissions) {
+        try {
+            if (permissions.contains("android.permission.FAKE_PACKAGE_SIGNATURE")
+                    && p.applicationInfo.targetSdkVersion > Build.VERSION_CODES.LOLLIPOP_MR1
+                    && p.mAppMetaData != null) {
+                String sig = p.mAppMetaData.getString("fake-signature");
+                if (sig != null) {
+                    pi.signatures = new Signature[] {new Signature(sig)};
+		    try {
+                        pi.signingInfo = new SigningInfo(
+                            new SigningDetails(
+                                    pi.signatures,
+                                    SigningDetails.SignatureSchemeVersion.SIGNING_BLOCK_V3,
+                                    PackageParser.toSigningKeys(pi.signatures),
+                                    null
+                            )
+                        );
+                    } catch (CertificateException e) {
+                        Slog.e(TAG, "Caught an exception when creating signing keys: ", e);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            // We should never die because of any failures, this is system code!
+            Log.w("PackageManagerService.FAKE_PACKAGE_SIGNATURE", t);
+    }
+        return pi;
     }
 
     @Override
